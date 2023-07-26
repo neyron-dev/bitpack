@@ -4,8 +4,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const fs = require('fs');
 const FileManagerPlugin = require('filemanager-webpack-plugin');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 var webpack = require('webpack')
-
 
 let globalFolder = "src";
 let pagesFolder = path.join(globalFolder,'pages');
@@ -87,7 +87,7 @@ let findPages = function(acc, fileName, sourcePath) {
     let filePath = path.join(sourcePath,fileName)
     
     let result = findExtensionsAndIncludes(filePath);
-    result["chunks"] = ["js","css"].concat(result["chunks"])
+    result["chunks"] = ["assets/js","assets/css"].concat(result["chunks"])
     let chunks = result["chunks"]
 
     filename = filePath.replace(globalFolder,'');
@@ -163,11 +163,12 @@ let findJsAndCssEntries = function(acc,nowPath) {
 }
 
 let entries = componentsObject["chunks"].reduce((acc, path) =>findJsAndCssEntries(acc, path), {});
-console.log(entries)
+
 var twigConfig = {
     
     //mode: 'development',
     entry:  Object.assign({}, entries,{
+        
        //hot: 'webpack/hot/dev-server.js',
         //client: 'webpack-dev-server/client/index.js?hot=true&live-reload=true',
         // vendor: ['bootstrap','jquery'],
@@ -185,6 +186,10 @@ var twigConfig = {
     module:{
         rules: [
             {
+                test: /\.(eot|woff2?|svg|ttf)([\?]?.*)$/,
+                use: 'file-loader?name=/assets/fonts/[name].[ext]'
+            },
+            {
                 test: /\.s[ac]ss$/i,
                 use: [
                  
@@ -193,6 +198,7 @@ var twigConfig = {
                   MiniCssExtractPlugin.loader,
                   // Translates CSS into CommonJS
                   "css-loader",
+                  
                   // Compiles Sass to CSS
                   "sass-loader",
                 ],
@@ -205,7 +211,7 @@ var twigConfig = {
                     {
                         loader: "babel-loader",
                         options: {
-                            presets: ["babel-preset-env"]
+                            presets: ["@babel/preset-env"]
                         }
                     }
                 ]
@@ -218,10 +224,24 @@ var twigConfig = {
         new webpack.ProvidePlugin({
             $: "jquery",
             jQuery: "jquery",
-            'window.jQuery': "jquery"
+            'window.jQuery': "jquery",
+            Vue: 'vue',
+            'window.Vue' : 'vue'
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: 'src/assets/images', to: "assets/images", noErrorOnMissing: true},
+                { from: 'src/assets/fonts', to: "assets/fonts", noErrorOnMissing: true },
+                { from: 'src/assets/static', to: "assets/static", noErrorOnMissing: true},
+            ]
         })
         
     ],
+    resolve: {
+        alias: {
+          vue: 'vue/dist/vue.esm-browser.prod.js'
+        }
+      },
     watchOptions: {
        
         ignored: /node_modules/,
@@ -283,13 +303,7 @@ if(process.env.BUILD_MODE == "html") {
             'twig-html-loader'
         ]
     })
-    htmlConfig.plugins.push(new FileManagerPlugin({
-        events: {
-            onStart: {
-              delete: ['html'], 
-            },
-        },
-    }))
+    
     htmlConfig.plugins.push(
         new MiniCssExtractPlugin({
             // Options similar to the same options in webpackOptions.output
@@ -303,6 +317,14 @@ if(process.env.BUILD_MODE == "html") {
 
     if(process.env.BUILD_SYSTEM == "files") {
         htmlConfig.output.publicPath = "./"
+        htmlConfig.mode = 'production';
+        htmlConfig.plugins.push(new FileManagerPlugin({
+            events: {
+                onStart: {
+                  delete: ['html'], 
+                },
+            },
+        }))
     }
     else {
         htmlConfig.plugins.push(new webpack.HotModuleReplacementPlugin())

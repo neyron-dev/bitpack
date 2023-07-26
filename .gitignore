@@ -1,4 +1,5 @@
-bitrix
-html
-node_modules
+/bitrix
+/html
+/node_modules
 .vscode
+dist
