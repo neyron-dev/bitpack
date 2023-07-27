@@ -12,6 +12,8 @@
     "sass-loader": "^13.3.2",
     "terser-webpack-plugin": "^5.3.9",
     "twig-html-loader": "^0.1.9",
+    "vue-loader": "^17.2.2",
+    "vue-template-compiler": "^2.7.14",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
@@ -111,6 +113,7 @@
     "url": "^0.11.1",
     "url-loader": "^4.1.1",
     "vue": "^3.3.4",
+    "vuex": "^4.0.2",
     "watchpack": "^2.4.0",
     "webpack-merge": "^5.9.0",
     "webpack-sources": "^3.2.3",
@@ -122,7 +125,7 @@
     "build:html": "SET BUILD_MODE=html&&SET BUILD_SYSTEM=files&& webpack ",
     "build:bitrix": "SET BUILD_MODE=bitrix&& webpack ",
     "watch": "SET BUILD_MODE=html&&webpack --watch",
-    "browser": "SET BUILD_MODE=html&&webpack serve --open"
+    "browser": "SET BUILD_MODE=html&&SET NODE_ENV=development&&webpack serve --open"
   },
   "keywords": [],
   "author": "",
