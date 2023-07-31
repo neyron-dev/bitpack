@@ -6,11 +6,42 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 var webpack = require('webpack')
 const { VueLoaderPlugin } = require('vue-loader')
-const ConfigHelper = require("./ConfigHelper.js")
+const ConfigHelper = require("./ConfigHelper.js");
+const { on } = require('events');
+const {
+    createJoinFunction,
+    createJoinImplementation,
+    asGenerator,
+    defaultJoinGenerator,
+   } = require('resolve-url-loader');
+
 let configFunctions = new ConfigHelper();
 
 let componentsObject = fs.readdirSync(configFunctions.pagesFolder).reduce((acc, fileName) => configFunctions.findPages(acc, fileName, configFunctions.pagesFolder), {"html":[],"chunks":[]});
 let entries = componentsObject["chunks"].reduce((acc, path) =>configFunctions.findJsAndCssEntries(acc, path), {});
+
+
+   
+   // order source-map sampling location by your preferred precedence (matches defaultJoinGenerator)
+   const vendoAssetsPathsGenerator = asGenerator(
+    (item, ...rest) => {
+        const defaultTuples = [...defaultJoinGenerator(item, ...rest)];
+        let folder = defaultTuples[0][0];
+       
+        folder = folder.replace(/\\/g,"/");
+        if(folder.indexOf('node_modules') != -1){
+            defaultTuples[0][1] = path.join(folder.split('node_modules/')[1] , defaultTuples[0][1])
+        }
+       
+        return defaultTuples;
+    }
+      
+   );
+   
+   const myJoinFn = createJoinFunction(
+     'myJoinFn',
+     createJoinImplementation(vendoAssetsPathsGenerator),
+   );
 
 var twigConfig = {
     
@@ -32,6 +63,38 @@ var twigConfig = {
     module:{
         rules: [
             {
+                test: /\.(png|jpe?g|gif|jp2|webp|avif|svg|eot|woff|ttf)$/,
+                loader: 'file-loader',
+                type: "javascript/auto",
+                options: {
+                    name: "[name].[ext]",
+                    outputPath: (url, resourcePath, context) => {
+                        resourcePath = resourcePath.replace(/\\/g,"/");
+                     
+                        if(resourcePath.indexOf('node_modules') != -1)
+                        {
+                            return path.join('assets','vendor',resourcePath.split('node_modules/')[1]).replace(/\\/g,"/");
+                        }
+                        else {
+                            return resourcePath.split('src/')[1].replace(/\\/g,"/")
+                        }
+                        
+                    },
+                    publicPath: (url, resourcePath, context) => {
+                        resourcePath = resourcePath.replace(/\\/g,"/");
+                        if(resourcePath.indexOf('node_modules') != -1)
+                        {
+                            return resourcePath.split('node_modules/')[1].replace(/\\/g,"/");
+                        }
+                        else {
+                            return "/" + resourcePath.split('src/')[1].replace(/\\/g,"/")
+                        }
+                    },
+                },
+               
+             
+            },
+            {
                 test: /\.vue$/,
                 loader: 'vue-loader',
                 options: {
@@ -45,10 +108,28 @@ var twigConfig = {
                   //'style-loader',
                   MiniCssExtractPlugin.loader,
                   // Translates CSS into CommonJS
-                  "css-loader",
-                  
+                  {
+                    loader: 'css-loader',
+                    options: {    
+                        // url:false,
+                        sourceMap: true,
+                        esModule: false,
+                        importLoaders: 2,
+                    }
+                  },
+                 
+                  {
+                    loader: 'postcss-loader',
+                    // options: { sourceMap: true}
+                  },
+                  {
+                    loader: "sass-loader",
+                    options: { 
+                        sourceMap: true
+                    } 
+                  }
                   // Compiles Sass to CSS
-                  "sass-loader",
+                 
                 ],
               },
             {
@@ -109,9 +190,9 @@ var twigConfig = {
 					minSize: 0 // This is example is too small to create commons chunks
 				},
 				vendor: {
-					test: /node_modules/,
+					test: /node_modules|vendor/,
 					chunks: "initial",
-					name: "vendor",
+					name: "assets/vendor",
 					priority: 10,
 					enforce: true
 				}
